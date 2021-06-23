@@ -1,0 +1,285 @@
+package ServerPrueba;
+
+import java.awt.Color;
+import java.awt.Image;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+
+import java.sql.Timestamp;
+
+import javax.swing.ImageIcon;
+import javax.swing.JOptionPane;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyleContext;
+
+
+
+public class ControladorChat implements ActionListener,KeyListener,Runnable{
+	VistaChat vista;
+	ModeloChat modelo;
+
+	
+	
+	public ControladorChat(VistaChat vista, ModeloChat modelo)
+	{
+		
+		this.vista= vista;
+		this.modelo = modelo;
+		this.vista.setVisible(true);
+		this.vista.setResizable(false);
+		this.vista.setLocationRelativeTo(null);
+		this.vista.btnEnviarMensaje.addActionListener(this);
+		this.vista.txtMensaje.addKeyListener(this);
+		this.vista.btnOnOff.addActionListener(this);
+		this.vista.btnSonido.addActionListener(this);
+		this.vista.btnExportar.addActionListener(this);
+	}
+
+
+	@Override
+	public void actionPerformed(ActionEvent e) {
+		if(e.getSource() == this.vista.btnEnviarMensaje)
+		{
+			String mensaje = this.vista.txtMensaje.getText();
+			if(mensaje == null || mensaje.equals(""))
+			{
+				JOptionPane.showMessageDialog(null, "Debes escribir algo para enviar");
+			}
+			else 
+			{
+				Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+				String time = timestamp.toString();
+				//this.modelo.enviarMensajes(mensaje);
+				this.appendToPane(time, Color.LIGHT_GRAY);
+				this.appendToPane(" Yo:", Color.GREEN);
+				this.appendToPane(" "+mensaje + "\n", Color.BLACK);
+				this.modelo.ReproducirSonidoEnviar();
+				this.vista.txtMensaje.setText("");
+			}
+		}
+		if(e.getSource()==this.vista.btnOnOff)
+		{
+			if(this.modelo.usuarioConectado==false)
+			{
+				this.appendToPane("Esperando Conexion \n", Color.RED);
+				this.pedirNombre();
+				this.modelo.RecibirConexiones();
+				this.vista.btnOnOff.setForeground(Color.GREEN);
+				this.vista.btnOnOff.setBackground(Color.GREEN);
+				if (this.modelo.primerConectado)
+				{
+					this.añadirUsuariosTabla();
+					Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+					String time = timestamp.toString();
+					this.appendToPane(time, Color.LIGHT_GRAY);
+				}
+				Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+				this.modelo.horaUltimoMensaje = timestamp;
+				Thread hilo = new Thread(this);
+				hilo.start();
+			}
+			else
+			{
+				this.cerrarConexion();
+				this.vista.btnOnOff.setForeground(Color.RED);
+				this.vista.btnOnOff.setBackground(Color.RED);
+				Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+				String time = timestamp.toString();
+				this.appendToPane(time, Color.LIGHT_GRAY);
+				this.appendToPane(" Conexion Perdida" + "\n", Color.RED);
+				this.vista.dispose();
+				System.exit(0);
+			}
+		}
+		if(e.getSource()==this.vista.btnSonido)
+		{
+			if(this.modelo.sonido)
+			{
+				Image imgOff = new ImageIcon(VistaChat.class.getResource("/imagenes/Sound-off-icon.png")).getImage().getScaledInstance(40, 40, Image.SCALE_SMOOTH);
+				this.modelo.sonido=false;
+				this.vista.btnSonido.setIcon(new ImageIcon(imgOff));
+			}
+			else
+			{
+				Image imgOn = new ImageIcon(VistaChat.class.getResource("/imagenes/Sound-on-icon.png")).getImage().getScaledInstance(40, 40, Image.SCALE_SMOOTH);
+				this.modelo.sonido=true;
+				this.vista.btnSonido.setIcon(new ImageIcon(imgOn));
+			}
+		}
+		if(e.getSource()==this.vista.btnExportar)
+		{
+			String textoChat = this.vista.txtAreaMensajes.getText();
+			if(textoChat == null || textoChat.equals("") || textoChat.isEmpty())
+			{
+				JOptionPane.showMessageDialog(null, "Aun no hay nada que exportar");
+			}
+			else
+			{
+				//System.out.println("Esto dice: " + textoChat);
+				this.modelo.guardarComo(textoChat);
+			}
+			
+		}
+	}
+
+
+	@Override
+	public void keyTyped(KeyEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+	@Override
+	public void keyPressed(KeyEvent e) {
+
+		if(e.getSource()==this.vista.txtMensaje)
+		{
+			if(e.getKeyCode() == KeyEvent.VK_ENTER)
+			{
+				String mensaje = this.vista.txtMensaje.getText();
+				if(mensaje == null || mensaje.equals(""))
+				{
+					JOptionPane.showMessageDialog(null, "Debes escribir algo para enviar");
+				}
+				else 
+				{
+					Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+					String time = timestamp.toString();
+					this.modelo.enviarMensajes(mensaje);
+					this.appendToPane(time, Color.LIGHT_GRAY);
+					this.appendToPane(" Yo:", Color.GRAY);
+					this.appendToPane(" "+mensaje + "\n", Color.BLACK);
+					this.modelo.ReproducirSonidoEnviar();
+					this.vista.txtMensaje.setText("");
+				}
+			}
+		}
+		
+		
+
+	}
+
+
+	@Override
+	public void keyReleased(KeyEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+	
+	
+	private void añadirUsuariosTabla()
+	{
+		((DefaultTableModel) this.vista.tabla.getModel()).setRowCount(0);
+		DefaultTableModel model = (DefaultTableModel) this.vista.tabla.getModel();
+		for(Cliente cli: this.modelo.clientes)
+		{
+			model.addRow(new Object[] { "" + cli.getNomCliente()});
+		}
+		
+	}
+
+	private void appendToPane(String msg, Color c)
+    {
+        StyleContext sc = StyleContext.getDefaultStyleContext();
+        AttributeSet aset = sc.addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.Foreground, c);
+
+        aset = sc.addAttribute(aset, StyleConstants.FontFamily, "Lucida Console");
+        aset = sc.addAttribute(aset, StyleConstants.Alignment, StyleConstants.ALIGN_JUSTIFIED);
+
+        int len = this.vista.txtAreaMensajes.getDocument().getLength();
+        this.vista.txtAreaMensajes.setCaretPosition(len);
+        this.vista.txtAreaMensajes.setCharacterAttributes(aset, false);
+        this.vista.txtAreaMensajes.replaceSelection(msg);
+    }
+	
+	private void cerrarConexion()
+	{
+		//this.modelo.cerrarHilo();
+		((DefaultTableModel) this.vista.tabla.getModel()).setRowCount(0);
+		
+	}
+	
+	private void pedirNombre()
+	{
+		boolean error=true;
+		while(error==true)
+		{
+			String nombre = JOptionPane.showInputDialog("Ingrese tu nombre de usuario");
+			if(nombre.equals("") || nombre == null)
+			{
+				JOptionPane.showMessageDialog(null, "Error en la captura del nombre");
+			}
+			else
+			{
+				this.modelo.nombre=nombre;
+				error=false;
+			}
+		}	
+	}
+	
+	public void mandarPantalla(Mensaje mens)
+	{
+		String time = mens.getTime().toString();
+		String mensajeRecibido = mens.getMensaje();
+		this.appendToPane(time, Color.LIGHT_GRAY);
+		this.appendToPane("" + mens.getCli().getNomCliente(), Color.BLUE);
+		this.appendToPane(" "+mensajeRecibido + "\n", Color.GREEN);
+		this.modelo.horaUltimoMensaje = mens.getTime();
+		this.modelo.ReproducirSonidoRecibir();
+		this.modelo.Mensaje = false;
+	}
+	@Override
+	public void run() {
+		while (true) {
+			System.out.print("");
+			try {
+				
+				if (this.modelo.nuevoConectado == true) {
+					this.mostrarNuevaConexion(this.modelo.nuevoClienteConectado);
+					this.modelo.nuevoConectado = false;
+					this.modelo.nuevoClienteConectado = null;
+					this.añadirUsuariosTabla();
+				}
+				if (this.modelo.usuarioConectado == true) {
+					if (this.modelo.Mensaje) {
+						if (this.modelo.mensajes.size() == 1) {
+							this.mandarPantalla(this.modelo.mensajes.get(0));
+							this.modelo.ReenviarMensaje(this.modelo.mensajes.get(0));
+							this.modelo.horaUltimoMensaje = this.modelo.mensajes.get(0).getTime();//////////////
+						} else {
+							for (Mensaje mensaje : this.modelo.mensajes) {
+								if (mensaje.getTime().after(this.modelo.horaUltimoMensaje)) {
+									this.mandarPantalla(mensaje);
+									this.modelo.ReenviarMensaje(mensaje);
+									this.modelo.horaUltimoMensaje = mensaje.getTime();///////////////////////
+								}
+							}
+						}
+					}
+				}
+			}
+			catch (Exception e) {
+				e.printStackTrace(System.out);
+			}
+
+		}
+	}
+	
+	private void mostrarNuevaConexion(Cliente cli)
+	{
+		Timestamp tms = new Timestamp(System.currentTimeMillis());
+		String time = tms.toString();
+		this.appendToPane(time, Color.LIGHT_GRAY);
+		this.appendToPane("Conexion Exitosa con: " + cli.getNomCliente() + " Se conecto desde la IP: " +cli.getIpAddress()
+				+ "\n", Color.GREEN);
+		this.modelo.ReproducirSonidoRecibir();
+	}
+
+	
+}

@@ -1,0 +1,261 @@
+package Server;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
+import java.security.spec.KeySpec;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Base64;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+
+public class ModeloChat {
+
+	
+	int puertoLocal = 5432;
+	int puertoRecibirMensaje=1000;
+	String nombre;
+	boolean usuarioConectado = false;
+	String mensajeNuevo = "";
+	boolean Mensaje = false;
+	boolean primerConectado=false;
+	ArrayList<Cliente> clientes;
+	ArrayList<Mensaje> mensajes= new ArrayList<Mensaje>();
+	Timestamp horaUltimoMensaje;
+	boolean nuevoConectado = false;
+	Cliente nuevoClienteConectado;
+	boolean sonido=true;
+	ArrayList<String> nombresCon=new ArrayList<String>();
+	private  String secretKey = "Encriptafo!!!!";
+	private  String salt = "abcd!!!!";
+
+	public void RecibirConexiones() {
+		HiloConexiones hilo = new HiloConexiones(this);
+		Thread hil = new Thread(hilo);
+		hil.start();
+	}
+	
+	public void IniciarHiloMensajes(Cliente cli)
+	{
+		HiloMensajes hilo = new HiloMensajes(cli,this);
+		Thread hil = new Thread(hilo);
+		hil.start();
+		cli.setHiloMensajes(hil);
+	}
+	
+	public void enviarMensajes(String mens) {
+		if (this.usuarioConectado == true) {
+			this.nombresCon.clear();
+			for(Cliente cli: this.clientes)
+			{
+				this.nombresCon.add(cli.getNomCliente());
+			}
+			try {
+				for (Cliente cli : this.clientes) {
+					Socket s = new Socket(cli.getIpAddress(), cli.getPuertoRemoto());
+					ObjectOutputStream oos = new ObjectOutputStream(s.getOutputStream());
+					oos.writeObject("" +this.encrypt(this.nombre));
+					oos.writeObject(this.encrypt(mens));
+					oos.writeObject(this.nombresCon);
+					oos.close();
+				}
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			}
+		} else {
+			System.out.println("Desconectado");
+		}
+
+	}
+
+	public void ReproducirSonidoEnviar() {
+		if (this.sonido) {
+			AudioInputStream stream;
+			AudioFormat format;
+			DataLine.Info info;
+			Clip clip;
+			try {
+				stream = AudioSystem.getAudioInputStream(new File("Sonidos/Enviar.wav"));
+				format = stream.getFormat();
+				info = new DataLine.Info(Clip.class, format);
+				clip = (Clip) AudioSystem.getLine(info);
+				clip.open(stream);
+				clip.start();
+			} catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
+				e.printStackTrace();
+			}
+		}
+
+	}
+
+	public void ReproducirSonidoRecibir() {
+		if (this.sonido) {
+			AudioInputStream stream;
+			AudioFormat format;
+			DataLine.Info info;
+			Clip clip;
+			try {
+				stream = AudioSystem.getAudioInputStream(new File("Sonidos/Recibir.wav"));
+				format = stream.getFormat();
+				info = new DataLine.Info(Clip.class, format);
+				clip = (Clip) AudioSystem.getLine(info);
+				clip.open(stream);
+				clip.start();
+			} catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	public void ReenviarMensaje(Mensaje mensaje) {
+		
+		for(Cliente cli: this.clientes)
+		{
+			if(!cli.getNomCliente().equals(mensaje.getCli().getNomCliente()))
+			{
+				Socket s;
+				try {
+					s = new Socket(cli.getIpAddress(), cli.getPuertoRemoto());
+					ObjectOutputStream oos = new ObjectOutputStream(s.getOutputStream());
+					String nombre = mensaje.getCli().getNomCliente();
+					String mensajee = mensaje.getMensaje();
+					/*oos.writeObject("" +nombre);
+					oos.writeObject(mensajee);
+					oos.writeObject(this.nombresCon);*/
+					oos.writeObject("" +this.encrypt(nombre));
+					oos.writeObject(this.encrypt(mensajee));
+					oos.writeObject(this.nombresCon);
+					oos.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+	
+	public void guardarComo(String conversacion){
+
+	    JFileChooser guardar = new JFileChooser();
+	    guardar.showSaveDialog(null);
+	    guardar.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+
+	    File archivo = guardar.getSelectedFile();
+
+	    guardarFichero(conversacion, archivo);
+
+	}
+	
+	public void guardarFichero(String cadena, File archivo){
+
+	    FileWriter escribir;
+	    try {
+	        escribir = new FileWriter(archivo, true);
+	        escribir.write(cadena);
+	        escribir.close();
+	        JOptionPane.showMessageDialog(null, "Guardado Correctamente");
+	    } catch (FileNotFoundException ex) {
+	        JOptionPane.showMessageDialog(null, "Error al guardar, ponga nombre al archivo");
+	    } catch (IOException ex) {
+	        JOptionPane.showMessageDialog(null, "Error al guardar, en la salida");
+	    }
+	}
+	
+	public String encrypt(String strToEncrypt) 
+	{
+	    try
+	    {
+	        byte[] iv = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	        IvParameterSpec ivspec = new IvParameterSpec(iv);
+	        SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+	        KeySpec spec = new PBEKeySpec(secretKey.toCharArray(), salt.getBytes(), 65536, 256);
+	        SecretKey tmp = factory.generateSecret(spec);
+	        SecretKeySpec secretKey = new SecretKeySpec(tmp.getEncoded(), "AES");
+	        
+	        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+	        cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivspec);
+	        return Base64.getEncoder().encodeToString(cipher.doFinal(strToEncrypt.getBytes("UTF-8")));
+	    } 
+	    catch (Exception e) 
+	    {
+	        System.out.println("Error while encrypting: " + e.toString());
+	    }
+	    return null;
+	}
+	
+	public Cliente buscarCliente(String usuarioBuscado)
+	{
+		Cliente cliente=null;
+		boolean encontrado=false;
+		for(Cliente cli: clientes)
+		{
+		  if(usuarioBuscado.equals(cli.getNomCliente()))
+		  {
+			  encontrado=true;
+			  cliente = cli;
+		  }  
+		}
+		if(encontrado==false)
+		{
+			cliente=null;
+		}
+		if(encontrado)
+		{
+			System.out.println("Cliente encontrado: "+ cliente.getNomCliente());
+		}
+		return cliente;
+	}
+	
+	@SuppressWarnings("deprecation")
+	public void expulsarCliente(Cliente cliente) {
+		try {
+			if (cliente != null) {
+				cliente.getHiloMensajes().stop();
+				for (int i = 0; i < clientes.size(); i++) {
+					if (clientes.get(i).getNomCliente().equals(cliente.getNomCliente())) {
+						clientes.remove(i);
+						System.out.println("Cliente expulsado");
+					}
+				}
+
+			}
+		} catch (Exception e) {
+			e.printStackTrace(System.out);
+		}
+
+	}
+	
+	public void mensajeExpulsado(Cliente cli) {
+		Socket s;
+		try {
+			s = new Socket(cli.getIpAddress(), cli.getPuertoRemoto());
+			ObjectOutputStream oos = new ObjectOutputStream(s.getOutputStream());
+			String nombre = this.encrypt("Servidor");
+			String mensajee = this.encrypt("Te ha expulsado de la conversacion");
+			oos.writeObject("" + this.encrypt(nombre));
+			oos.writeObject(this.encrypt(mensajee));
+			oos.writeObject(this.nombresCon);
+			oos.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+}

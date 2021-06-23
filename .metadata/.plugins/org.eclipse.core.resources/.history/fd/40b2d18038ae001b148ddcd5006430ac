@@ -1,0 +1,104 @@
+package Server;
+
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.net.ServerSocket;
+
+
+public class Cliente implements Serializable{
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -6403651812417025737L;
+	private String ipAddress;
+	private String nomCliente;
+	private int puertoRemoto;
+	private ServerSocket ss;
+	private ObjectInputStream ois;
+	private ObjectOutputStream ous;
+	private int puertoRecibirMensaje;
+
+	private Thread hiloMensajes;
+
+	public Cliente()
+	{
+		
+	}
+	public ObjectInputStream getOis() {
+		return ois;
+	}
+
+	public void setOis(ObjectInputStream ois) {
+		this.ois = ois;
+	}
+
+	public ObjectOutputStream getOus() {
+		return ous;
+	}
+
+	public void setOus(ObjectOutputStream ous) {
+		this.ous = ous;
+	}
+
+	public Cliente(String ipAddress, String nomCliente,int puertoRemoto) {
+		this.ipAddress = ipAddress;
+		this.nomCliente = nomCliente;
+		this.puertoRemoto = puertoRemoto;
+	}
+	
+	public ServerSocket getSs() {
+		return ss;
+	}
+
+	public void setSs(ServerSocket ss) {
+		this.ss = ss;
+	}
+
+	public int getPuertoRemoto() {
+		return puertoRemoto;
+	}
+
+	public void setPuertoRemoto(int puertoRemoto) {
+		this.puertoRemoto = puertoRemoto;
+	}
+	public String getIpAddress() {
+		return ipAddress;
+	}
+
+	public void setIpAddress(String ipAddress) {
+		this.ipAddress = ipAddress;
+	}
+
+	public String getNomCliente() {
+		return nomCliente;
+	}
+
+	public void setNomCliente(String nomCliente) {
+		this.nomCliente = nomCliente;
+	}
+
+	public int getPuertoRecibirMensaje() {
+		return puertoRecibirMensaje;
+	}
+
+	/*public void setPuertoRecibirMensaje(int puertoRecibirMensaje) {
+		this.puertoRecibirMensaje = puertoRecibirMensaje;
+	}¨/
+
+	public Thread getHiloMensajes() {
+		return hiloMensajes;
+	}
+	public void setHiloMensajes(Thread hiloMensajes) {
+		this.hiloMensajes = hiloMensajes;
+	}
+	
+
+	
+	
+	
+	
+	
+	
+}

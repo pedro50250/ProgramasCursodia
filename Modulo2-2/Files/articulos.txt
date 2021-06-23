@@ -1,0 +1,7 @@
+1,gansito,10.0,1
+2,fanta,10.0,1
+3,coca,12.0,1
+4,sprite,10.0,15
+5,dieta,45.0,15
+6,toronja,8.0,2
+7,toronja,9.0,1

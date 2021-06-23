@@ -1,0 +1,87 @@
+package ServerPrueba;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
+import java.util.ArrayList;
+
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
+
+public class ModeloChat {
+
+	int puertoLocal = 5432;
+	String nombre;
+	boolean usuarioConectado = false;
+	int puertoRemoto;
+	String nomUsuario = "";
+	String ipRemota = "";
+	String mensajeNuevo = "";
+	boolean Mensaje = false;
+	ArrayList<Cliente> clientes;
+	Cliente cli;
+
+	public void RecibirConexiones() {
+		HiloConexiones hilo = new HiloConexiones(this);
+		hilo.run();
+	}
+
+	public void enviarMensajes(String mensaje) {
+		if (this.usuarioConectado == true) {
+			try {
+				for (Cliente cli : this.clientes) {
+					cli.getOus().writeObject(mensaje);
+				}
+
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			}
+		} else {
+			System.out.println("Desconectado");
+		}
+
+	}
+
+	public void ReproducirSonidoEnviar() {
+
+		AudioInputStream stream;
+		AudioFormat format;
+		DataLine.Info info;
+		Clip clip;
+		try {
+			stream = AudioSystem.getAudioInputStream(new File("Sonidos/Enviar.wav"));
+			format = stream.getFormat();
+			info = new DataLine.Info(Clip.class, format);
+			clip = (Clip) AudioSystem.getLine(info);
+			clip.open(stream);
+			clip.start();
+		} catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void ReproducirSonidoRecibir() {
+		AudioInputStream stream;
+		AudioFormat format;
+		DataLine.Info info;
+		Clip clip;
+		try {
+			stream = AudioSystem.getAudioInputStream(new File("Sonidos/Recibir.wav"));
+			format = stream.getFormat();
+			info = new DataLine.Info(Clip.class, format);
+			clip = (Clip) AudioSystem.getLine(info);
+			clip.open(stream);
+			clip.start();
+		} catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
+			e.printStackTrace();
+		}
+
+	}
+
+}

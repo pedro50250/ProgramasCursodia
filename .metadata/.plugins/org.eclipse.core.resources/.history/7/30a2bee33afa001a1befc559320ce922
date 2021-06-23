@@ -1,0 +1,234 @@
+package ServerPrueba;
+
+
+import java.io.File;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.ArrayList;
+
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
+
+
+public class ModeloChat implements Runnable {
+
+	int puertoLocal = 5432;
+	String nombre;
+	boolean usuarioConectado = false;
+	int puertoRemoto;
+	String nomUsuario = "";
+	String ipRemota = "";
+	String mensajeNuevo = "";
+	boolean Mensaje = false;
+	private Thread hilo;
+	Socket socketRecibir;
+	ControladorChat controlador;
+	ArrayList<Cliente> clientes;
+	ServerSocket ss;
+	Cliente cli;
+	
+	public void levantarServer(ControladorChat con) {
+		
+		if(this.clientes ==null)
+		{
+			this.clientes= new ArrayList<Cliente>();
+		}
+		this.controlador=con;
+		if (this.usuarioConectado == false) {
+			try {
+				String ip,nombre;
+				int puerto;
+				if(ss==null)
+				{
+					ss = new ServerSocket(puertoLocal); // ABRE EL PUERTO
+					
+				}
+				System.out.println("Esperando Conexion");
+				Socket s = ss.accept(); // AL RECIBIR UNA CONEXION LA ACEPTA
+				this.ipRemota = "" + s.getInetAddress(); // SACA LA IP DEL CLIENTE CONECTADO
+				StringBuilder sb = new StringBuilder(ipRemota);
+				sb.deleteCharAt(0);
+				this.ipRemota = sb.toString();
+				ip=sb.toString();
+				ObjectInputStream ois = new ObjectInputStream(s.getInputStream()); // LEE EL MENSAJE QUE CONTIENE EL NOMBRE DEL CLIENTE
+				String datos= (String) ois.readObject(); // SE GUARDA EL NOMBRE
+				String[] dato = datos.split(" ");
+				this.nomUsuario = dato[0];
+				nombre= dato[0];
+				puerto = Integer.parseInt(dato[1]);
+				this.puertoRemoto = puerto;
+				if(clientes==null)
+				{
+					 cli= new Cliente(ip,nombre,puerto);
+					clientes.add(cli);
+					System.out.println("Puerto recibido de cliente: " + puerto);
+					System.out.println("Se conecto " + nomUsuario + " desde la IP: " + s.getInetAddress()); // SE IMPRIME
+				}
+				else
+				{
+					boolean encontrado=false;
+					for(Cliente clis: this.clientes)
+					{
+						if(clis.getNomCliente().equals(nombre))
+						{
+							encontrado=true;
+						}
+					}
+					
+					if(encontrado==false)
+					{
+						cli= new Cliente(ip,nombre,puerto);
+						clientes.add(cli);
+						System.out.println("Puerto recibido de cliente: " + puerto);
+						System.out.println("Se conecto " + nomUsuario + " desde la IP: " + s.getInetAddress()); // SE IMPRIME
+					}
+					else
+					{
+						s.close();
+					}
+				}
+				
+				//ss.close();// CIERRA EL SOCKET PARA ABRIRLO AHORA EN EL HILO
+				this.usuarioConectado = true;
+			} catch (IOException | ClassNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public void enviarNombre() {
+		if (this.usuarioConectado == true) {
+			try {
+				@SuppressWarnings("resource")
+				Socket s = new Socket(ipRemota, puertoRemoto); // CONECTA CON LA IP DEL SERVER Y EL PUERTO
+				ObjectOutputStream oos = new ObjectOutputStream(s.getOutputStream());// INSTANCIA LA SALIDA DE DATOS
+				oos.writeObject(nombre);// ENVIA EL NOMBRE
+				oos.close(); // CIERRA EL FLUJO PARA ABRIRLO EN EL WHILE
+				this.abrirHilo(this, cli);
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			}
+		}
+	}
+
+	public void enviarMensajes(String mensaje) {
+		if (this.usuarioConectado == true) {
+			try {
+				@SuppressWarnings("resource")
+				Socket s = new Socket(this.ipRemota, this.puertoRemoto);
+				ObjectOutputStream oos = new ObjectOutputStream(s.getOutputStream());
+				oos.writeObject(mensaje);
+				oos.close();
+
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			}
+		} else {
+			System.out.println("Desconectado");
+		}
+
+	}
+
+	@SuppressWarnings("unused")
+	public void abrirHilo(ModeloChat modelo,Cliente cli) {
+		if(this.usuarioConectado==true)
+		{
+			//hilo = new Thread(this);
+			//hilo.start();
+			HiloRecibir hilo = new HiloRecibir(controlador, this, cli);
+			hilo.run();
+		}
+		
+	}
+
+	@Override
+	public void run() {
+		try {	
+			//ServerSocket ss = new ServerSocket(puertoLocal);
+			while (true) {
+				try {
+					socketRecibir = ss.accept();
+					ObjectInputStream ois = new ObjectInputStream(socketRecibir.getInputStream());
+					String mensaje = (String) ois.readObject();
+					if (mensaje != null || mensaje != "") {
+						System.out.println(nomUsuario + " dice: " + mensaje);
+						this.mensajeNuevo = mensaje;
+						this.Mensaje = true;
+						this.controlador.mandarPantalla();
+					}
+				} catch (ClassNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	public void ReproducirSonidoEnviar()  {
+		// File miarchivo = new File("Sonidos/Enviar.wav");
+		AudioInputStream stream;
+		AudioFormat format;
+		DataLine.Info info;
+		Clip clip;
+		try {
+			stream = AudioSystem.getAudioInputStream(new File("Sonidos/Enviar.wav"));
+			format = stream.getFormat();
+			info = new DataLine.Info(Clip.class, format);
+			clip = (Clip) AudioSystem.getLine(info);
+			clip.open(stream);
+			clip.start();
+		} catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void ReproducirSonidoRecibir() {
+		AudioInputStream stream;
+		AudioFormat format;
+		DataLine.Info info;
+		Clip clip;
+		try {
+			stream = AudioSystem.getAudioInputStream(new File("Sonidos/Recibir.wav"));
+			format = stream.getFormat();
+			info = new DataLine.Info(Clip.class, format);
+			clip = (Clip) AudioSystem.getLine(info);
+			clip.open(stream);
+			clip.start();
+		} catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
+			e.printStackTrace();
+		}
+
+	}
+	
+	@SuppressWarnings("deprecation")
+	public void cerrarHilo()
+	{
+		try {
+			socketRecibir.close();
+			hilo.stop();
+			this.usuarioConectado=false;
+			this.nomUsuario="";
+			this.puertoRemoto=0;
+			this.nombre="";
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+	}
+	
+	
+}

@@ -1,0 +1,17 @@
+package Servidor;
+
+public class Cliente {
+
+	private int idCliente;
+	private int ipAddress;
+	private String nomCliente;
+	
+	public Cliente(int idCliente, int ipAddress, String nomCliente) {
+		this.idCliente = idCliente;
+		this.ipAddress = ipAddress;
+		this.nomCliente = nomCliente;
+	}
+	
+	
+	
+}

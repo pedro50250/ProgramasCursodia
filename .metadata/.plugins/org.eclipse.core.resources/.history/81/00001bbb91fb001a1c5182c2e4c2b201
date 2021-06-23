@@ -1,0 +1,43 @@
+package Cliente;
+
+import java.sql.Timestamp;
+
+public class Mensaje {
+
+	private Cliente cli;
+	private String mensaje,nombre;
+	private Timestamp time;
+	public Mensaje(String mensaje, String nombre, Timestamp time,Cliente cli) {
+		this.mensaje = mensaje;
+		this.nombre = nombre;
+		this.time = time;
+		this.cli = cli;
+	}
+	public String getMensaje() {
+		return mensaje;
+	}
+	public void setMensaje(String mensaje) {
+		this.mensaje = mensaje;
+	}
+	public String getNombre() {
+		return nombre;
+	}
+	public void setNombre(String nombre) {
+		this.nombre = nombre;
+	}
+	public Timestamp getTime() {
+		return time;
+	}
+	public void setTime(Timestamp time) {
+		this.time = time;
+	}
+	public Cliente getCli() {
+		return cli;
+	}
+	public void setCli(Cliente cli) {
+		this.cli = cli;
+	}
+	
+	
+	
+}

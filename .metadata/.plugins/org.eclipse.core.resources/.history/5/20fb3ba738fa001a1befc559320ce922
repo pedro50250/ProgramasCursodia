@@ -1,0 +1,21 @@
+package ServerPrueba;
+
+public class HiloRecibir implements Runnable{
+	ControladorChat controlador;
+	ModeloChat modelo;
+	Cliente cliente;
+	
+	public HiloRecibir(ControladorChat controlador, ModeloChat modelo, Cliente cliente) {
+		this.controlador = controlador;
+		this.modelo = modelo;
+		this.cliente=cliente;
+	}
+
+
+	@Override
+	public void run() {
+		
+		
+	}
+
+}

@@ -1,0 +1,46 @@
+package ServerPrueba;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.net.Socket;
+
+public class HiloRecibir implements Runnable{
+	ControladorChat controlador;
+	ModeloChat modelo;
+	Cliente cliente;
+	
+	public HiloRecibir(ControladorChat controlador, ModeloChat modelo, Cliente cliente) {
+		this.controlador = controlador;
+		this.modelo = modelo;
+		this.cliente=cliente;
+	}
+
+
+	@Override
+	public void run() {
+		try {	
+			//ServerSocket ss = new ServerSocket(puertoLocal);
+			while (true) {
+				try {
+					Socket socketRecibir = modelo.ss.accept();
+					ObjectInputStream ois = new ObjectInputStream(socketRecibir.getInputStream());
+					String mensaje = (String) ois.readObject();
+					if (mensaje != null || mensaje != "") {
+						System.out.println(cliente.getNomCliente() + " dice: " + mensaje);
+						this.modelo.mensajeNuevo = mensaje;
+						this.modelo.Mensaje = true;
+						this.controlador.mandarPantalla();
+					}
+				} catch (ClassNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+
+}

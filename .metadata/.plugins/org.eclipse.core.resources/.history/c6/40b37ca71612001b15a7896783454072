@@ -1,0 +1,8 @@
+module Modulo {
+	requires java.sql;
+	
+	requires java.desktop;
+	requires EjemploLibreria;
+	requires mongo.java.driver;
+	requires java.xml;
+}

@@ -1,0 +1,7 @@
+module Modulo {
+	requires commons.net;
+	requires java.desktop;
+	requires core;
+	requires java.mail;
+	requires javax.mail;
+}

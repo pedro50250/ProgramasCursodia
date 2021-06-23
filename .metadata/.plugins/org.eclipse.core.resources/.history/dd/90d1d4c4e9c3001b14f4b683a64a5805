@@ -1,0 +1,18 @@
+package Banregio;
+
+import java.sql.Connection;
+import java.util.ArrayList;
+
+public class Lanzador {
+	public static Connection conect = null;
+
+	ArrayList<Prestamos> prestamosCliente = new ArrayList<Prestamos>();
+	public static void main(String[] args)
+	{
+		String fecha_Actual= "15-feb-21";
+		String Cliente = "00103228";
+		float Tasa_IVA = 16f;
+		int Dias_Año_Comercial=360;
+		
+	}
+}

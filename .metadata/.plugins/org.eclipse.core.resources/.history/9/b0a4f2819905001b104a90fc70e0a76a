@@ -1,0 +1,41 @@
+package Sesion3;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+
+import org.apache.commons.net.ftp.FTPClient;
+
+public class SubirAFTP {
+
+	public static void main(String[] args)
+	{
+		FTPClient client = new FTPClient();
+		FileInputStream fis = null;
+		try
+		{
+			client.connect("25.81.51.142");
+			client.login("DiplomadoJ14B", "Cursodia");
+			String filename = "HolaSoyPedro.txt";
+			fis = new FileInputStream(filename);
+			client.storeFile(filename, fis);
+			client.logout();
+			System.out.println("Archivo Subido correctamente");
+		}
+		catch(IOException e)
+		{
+			e.printStackTrace();
+		}
+		finally
+		{
+			try
+			{
+				if(fis!= null) fis.close();
+				client.disconnect();
+			}
+			catch(IOException e)
+			{
+				e.printStackTrace();
+			}
+		}
+	}
+}

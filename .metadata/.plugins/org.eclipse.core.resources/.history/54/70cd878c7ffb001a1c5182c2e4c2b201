@@ -1,0 +1,14 @@
+package Cliente2;
+
+public class LanzadorCliente22 {
+
+	
+	@SuppressWarnings("unused")
+	public static void main(String[]args)
+	{
+		System.out.println("Cliente");
+		VistaChat vista = new VistaChat();
+		ModeloChat modelo = new ModeloChat();
+		ControladorChat con = new ControladorChat(vista,modelo);
+	}
+}

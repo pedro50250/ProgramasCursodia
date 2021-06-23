@@ -1,0 +1,10 @@
+package Banregio;
+
+public class Lanzador {
+
+	public static void main(String[] args)
+	{
+		String fecha_Actual= "15-feb-21";
+		String Cliente = "00103228";
+	}
+}

@@ -1,0 +1,290 @@
+package Cliente;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.security.spec.KeySpec;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Base64;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
+import javax.swing.JOptionPane;
+
+
+public class ModeloChat implements Runnable {
+
+	int puertoLocal = 555;
+	boolean sonido=true;
+	String nombre;
+	boolean usuarioConectado = false;
+	//int puertoRemoto = 666;
+	int puertoRemoto=5432;
+	int puertoRemotomensaje;
+	String nomServer = "";
+	String ipRemota = "25.90.151.108";
+	String mensajeNuevo = "";
+	boolean Mensaje = false;
+	private Thread hilo;
+	Socket socketRecibir;
+	ArrayList<Mensaje> mensajes= new ArrayList<Mensaje>();
+	Timestamp horaUltimoMensaje;
+	ArrayList<String> conectados = new ArrayList<String>();
+	private  String secretKey = "Encriptafo!!!!";
+	private  String salt = "abcd!!!!";
+
+	public void conectar(String ipExtraida) {
+		// TRY QUE MANDA LOS DATOS DEL CLIENTE CONECTADO
+		try {
+			@SuppressWarnings("resource")
+			Socket s = new Socket(ipExtraida, puertoRemoto); // CONECTA CON LA IP DEL SERVER Y EL PUERTO
+			ObjectOutputStream oos = new ObjectOutputStream(s.getOutputStream());// INSTANCIA LA SALIDA DE DATOS
+			oos.writeObject(nombre +" " +this.puertoLocal);// ENVIA EL NOMBRE
+			
+			//oos.defaultWriteObject();
+			oos.close(); 
+			this.usuarioConectado=true;
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+	}
+
+
+	public void recibirNombre() {
+		if (this.usuarioConectado == true) {
+			try {
+				ServerSocket ss = new ServerSocket(puertoLocal); // ABRE EL PUERTO
+				System.out.println("Esperando Conexion");
+
+				Socket s = ss.accept(); // AL RECIBIR UNA CONEXION LA ACEPTA
+				String ip = "" + s.getInetAddress(); // SACA LA IP DEL CLIENTE CONECTADO
+				System.out.println("IP CORREGIDA: " + ip.replace("/", ""));
+
+				ObjectInputStream ois = new ObjectInputStream(s.getInputStream()); // LEE EL MENSAJE QUE CONTIENE EL
+																					// NOMBRE
+			    										// DEL CLIENTE
+				//nomServer = (String) ois.readObject(); // SE GUARDA EL NOMBRE
+				String datos = (String) ois.readObject();
+				String[] dato = datos.split(" ");
+				this.nomServer = dato[0];
+				this.puertoRemotomensaje = Integer.parseInt(dato[1]);
+				System.out.println("Se conecto " + nomServer + " desde la IP: " + s.getInetAddress()); // SE IMPRIME
+				ss.close();// CIERRA EL SOCKET PARA ABRIRLO AHORA EN EL HILO
+
+			} catch (IOException | ClassNotFoundException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public void enviarMensajes(String mensaje) {
+		if (this.usuarioConectado == true) {
+			try {
+				@SuppressWarnings("resource")
+				Socket s = new Socket(this.ipRemota, this.puertoRemotomensaje);
+				ObjectOutputStream oos = new ObjectOutputStream(s.getOutputStream());
+				oos.writeObject(this.encrypt(mensaje));
+				oos.close();
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			}
+		} else {
+			System.out.println("Desconectado");
+		}
+
+	}
+
+	public void abrirHilo(ModeloChat modelo) {
+		if(this.usuarioConectado==true)
+		{
+			hilo = new Thread(this);
+			hilo.start();
+		}
+		
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public void run() {
+		try {
+			@SuppressWarnings("resource")
+			ServerSocket ss = new ServerSocket(puertoLocal);
+			while (true) {
+				try {
+		
+					socketRecibir = ss.accept();
+					ObjectInputStream ois = new ObjectInputStream(socketRecibir.getInputStream());
+					String nombre = this.decrypt((String) ois.readObject());
+					String mensaje = this.decrypt((String) ois.readObject());
+					this.conectados.clear();
+					this.conectados = (ArrayList<String>) ois.readObject();
+					if (mensaje != null || mensaje != "") {
+						System.out.println(nombre + " dice: " + mensaje);
+						this.mensajeNuevo = mensaje;
+						// this.controlador.mandarPantalla(nombre,mensaje);
+						Cliente cli = new Cliente();
+						cli.setNomCliente(nombre);
+						Mensaje men = new Mensaje();
+						Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+						men.setMensaje(mensaje);
+						men.setTime(timestamp);
+						men.setCli(cli);
+						
+						this.mensajes.add(men);
+						this.Mensaje = true;
+					}
+					
+					
+					
+				} catch (ClassNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	public void ReproducirSonidoEnviar() {
+		if (this.sonido) {
+			AudioInputStream stream;
+			AudioFormat format;
+			DataLine.Info info;
+			Clip clip;
+			try {
+				stream = AudioSystem.getAudioInputStream(new File("Sonidos/Enviar.wav"));
+				format = stream.getFormat();
+				info = new DataLine.Info(Clip.class, format);
+				clip = (Clip) AudioSystem.getLine(info);
+				clip.open(stream);
+				clip.start();
+			} catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
+				e.printStackTrace();
+			}
+		}
+
+	}
+
+	public void ReproducirSonidoRecibir() {
+		if (this.sonido) {
+			AudioInputStream stream;
+			AudioFormat format;
+			DataLine.Info info;
+			Clip clip;
+			try {
+				stream = AudioSystem.getAudioInputStream(new File("Sonidos/Recibir.wav"));
+				format = stream.getFormat();
+				info = new DataLine.Info(Clip.class, format);
+				clip = (Clip) AudioSystem.getLine(info);
+				clip.open(stream);
+				clip.start();
+			} catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
+				e.printStackTrace();
+			}
+		}
+
+	}
+	
+	public  String decrypt(String strToDecrypt) {
+	    try
+	    {
+	        byte[] iv = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	        IvParameterSpec ivspec = new IvParameterSpec(iv);
+	         
+	        SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+	        KeySpec spec = new PBEKeySpec(secretKey.toCharArray(), salt.getBytes(), 65536, 256);
+	        SecretKey tmp = factory.generateSecret(spec);
+	        SecretKeySpec secretKey = new SecretKeySpec(tmp.getEncoded(), "AES");
+	         
+	        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
+	        cipher.init(Cipher.DECRYPT_MODE, secretKey, ivspec);
+	        return new String(cipher.doFinal(Base64.getDecoder().decode(strToDecrypt)));
+	    } 
+	    catch (Exception e) {
+	        System.out.println("Error while decrypting: " + e.toString());
+	    }
+	    return null;
+	}
+	
+	public String encrypt(String strToEncrypt) 
+	{
+	    try
+	    {
+	        byte[] iv = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	        IvParameterSpec ivspec = new IvParameterSpec(iv);
+	        SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+	        KeySpec spec = new PBEKeySpec(secretKey.toCharArray(), salt.getBytes(), 65536, 256);
+	        SecretKey tmp = factory.generateSecret(spec);
+	        SecretKeySpec secretKey = new SecretKeySpec(tmp.getEncoded(), "AES");
+	        
+	        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+	        cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivspec);
+	        return Base64.getEncoder().encodeToString(cipher.doFinal(strToEncrypt.getBytes("UTF-8")));
+	    } 
+	    catch (Exception e) 
+	    {
+	        System.out.println("Error while encrypting: " + e.toString());
+	    }
+	    return null;
+	}
+	
+	public String pedirIp() {
+		boolean ipValida = false;
+		String ipExtraida = "";
+		while(ipValida == false) {
+			
+			ipExtraida = JOptionPane.showInputDialog("¿A que IP deseas conectarte?");
+			System.out.println("ip: " + ipExtraida);
+			String[] ipSegments = ipExtraida.split(".");
+			for(String s: ipSegments)
+			{
+				System.out.println(s);
+			}
+			if(ipExtraida == null || ipExtraida.isEmpty())
+			{
+				ipValida = false;
+				System.out.println("1");
+			} else if ( ipSegments.length != 4 )
+			{
+				ipValida = false;
+				System.out.println("2");
+
+			} else if ( ipExtraida.endsWith(".") )
+			{
+				ipValida = false;
+				System.out.println("3");
+			} else {
+				System.out.println("4");
+				ipValida = true; // En caso de que la ip no sea nula, tenga 4 segmentos, y no termine en punto
+			}
+			
+			for( String s : ipSegments )
+			{
+				int i = Integer.parseInt(s);
+				if ( (i < 0) || (i > 255) ) {
+					ipValida = false;
+				}
+			}
+		}
+		
+		return ipExtraida;
+	}
+
+}

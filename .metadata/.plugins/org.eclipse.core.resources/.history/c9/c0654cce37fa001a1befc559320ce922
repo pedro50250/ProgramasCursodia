@@ -1,0 +1,89 @@
+package ServerPrueba;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.ArrayList;
+
+public class HiloSocket implements Runnable {
+
+	ModeloChat modelo;
+	ControladorChat controlador;
+
+	
+	public HiloSocket(ModeloChat modelo, ControladorChat controlador) {
+		this.modelo = modelo;
+		this.controlador = controlador;
+	}
+
+
+	@Override
+	public void run() {
+		while (true) {
+			if (this.modelo.clientes == null) {
+				this.modelo.clientes = new ArrayList<Cliente>();
+			}
+
+			if (this.modelo.usuarioConectado == false) {
+				try {
+					String ip, nombre;
+					int puerto;
+					if (this.modelo.ss == null) {
+						this.modelo.ss = new ServerSocket(this.modelo.puertoLocal); // ABRE EL PUERTO
+
+					}
+					System.out.println("Esperando Conexion");
+					Socket s = this.modelo.ss.accept(); // AL RECIBIR UNA CONEXION LA ACEPTA
+					this.modelo.ipRemota = "" + s.getInetAddress(); // SACA LA IP DEL CLIENTE CONECTADO
+					StringBuilder sb = new StringBuilder(this.modelo.ipRemota);
+					sb.deleteCharAt(0);
+					this.modelo.ipRemota = sb.toString();
+					ip = sb.toString();
+					ObjectInputStream ois = new ObjectInputStream(s.getInputStream()); // LEE EL MENSAJE QUE CONTIENE EL
+																						// NOMBRE DEL CLIENTE
+					String datos = (String) ois.readObject(); // SE GUARDA EL NOMBRE
+					String[] dato = datos.split(" ");
+					this.modelo.nomUsuario = dato[0];
+					nombre = dato[0];
+					puerto = Integer.parseInt(dato[1]);
+					this.modelo.puertoRemoto = puerto;
+					if (this.modelo.clientes == null) {
+						Cliente cli = new Cliente(ip, nombre, puerto);
+						this.modelo.clientes.add(cli);
+						System.out.println("Puerto recibido de cliente: " + puerto);
+						System.out.println(
+								"Se conecto " + this.modelo.nomUsuario + " desde la IP: " + s.getInetAddress()); // SE
+																													// IMPRIME
+					} else {
+						boolean encontrado = false;
+						for (Cliente clis : this.modelo.clientes) {
+							if (clis.getNomCliente().equals(nombre)) {
+								encontrado = true;
+							}
+						}
+
+						if (encontrado == false) {
+							Cliente cli = new Cliente(ip, nombre, puerto);
+							this.modelo.clientes.add(cli);
+							System.out.println("Puerto recibido de cliente: " + puerto);
+							System.out.println(
+									"Se conecto " + this.modelo.nomUsuario + " desde la IP: " + s.getInetAddress()); // SE
+																														// IMPRIME
+						} else {
+							s.close();
+						}
+					}
+
+					// ss.close();// CIERRA EL SOCKET PARA ABRIRLO AHORA EN EL HILO
+					this.modelo.usuarioConectado = true;
+				} catch (IOException | ClassNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+
+		}
+	}
+
+}
